@@ -1,24 +1,24 @@
 #include<stdio.h>
 #include<pthread.h>
 #include<stdlib.h>
-#include<unistd.h>
+#include<unistd.h>		
 #include<semaphore.h>
-int *avail;		// no. of available resources.
-int **allocated;		//process and resources 
+int *avail;	
+int **allocated;	
 int **max;
 int **need;
 int *done;
 int *temp;
+int *count;
 int processes=0,resources=0,flag=0;
 sem_t s;
 pthread_mutex_t allocate;
 pthread_mutex_t available;				
-pthread_mutex_t mut;
-pthread_cond_t cond;
+
 void *alloc(void *);
 int check(int);
 void fun1(int);
-//void complete();
+
 void initialise();
 int checkcomplete();
 
@@ -41,14 +41,22 @@ void *alloc(void *a){
 	int p=(int)a;
 		fun1(p);
 		
-		if(check(p)==0){
-			printf("THIS RESULT IN UNSAFE STATE\n");
+		while(check(p)==0 ){
+			if(count[p]>processes-1){
+			printf("\nNO SAFE SEQUENCE POSSIBLE\n");
+			exit(0);			
 			pthread_exit(NULL);
-		//	exit(0);
-					
+			
+			
+			break;
+			}
+			else{sleep(0.2);
+			
+			count[p]++;			
+			}		
 		}
 			for(int i=0;i<resources;i++){
-			//pthread_mutex_lock(&mut);		
+					
 			pthread_mutex_lock(&allocate);
 			allocated[p][i]+=need[p][i];
 			
@@ -57,9 +65,7 @@ void *alloc(void *a){
 			avail[i]-=need[p][i];
 			
 			pthread_mutex_unlock(&available);
-			//printf("Resouce %d allocated= %d for process%d\n",i+1,allocated[p][i],);
-			//printf("Available resource %d :%d\n",i+1,avail[i]);	
-		
+			
 
 			}
 		printf("         PROCESS %d        \n",p+1);
@@ -72,24 +78,22 @@ void *alloc(void *a){
 		for(int i=0;i<resources;i++){		
 			printf("Total Allocated resource %d is :%d\n",i+1,allocated[p][i]);
 		}
-		//complete(p);		
+				
 			for(int i=0;i<resources;i++){
 			avail[i]+=allocated[p][i];		
-			//printf("%d\n",avail[i]);		
+
 			}
 
 		printf("Process %d complete, Resources given back to available\n",p+1);
 		for(int i=0;i<resources;i++){		
 			printf("Now Available resource %d is :%d\n",i+1,avail[i]);
 		}
-		/*for(int i=0;i<resources;i++){
-			allocated[p][i]=0;		
-		}*/			
 		done[p]=1;		
 		temp[p]=0;		
 		pthread_mutex_unlock(&available);
 		
 		sem_post(&s);
+		
 		if(checkcomplete()==1){
 			printf("\nALL PROCESSES COMPLETED");		
 		}
@@ -101,12 +105,14 @@ void *alloc(void *a){
 
 void fun1(int a){
 		int p=a;
-		if(check(p)==0){
 		
+		
+		if(check(p)==0){		
 			if(temp[p]==0){
-				temp[p]=1;					
-				sem_wait(&s);
-				sleep(1);	
+				temp[p]=1;
+			
+			sem_wait(&s);
+			
 						
 			}
 			
@@ -130,11 +136,7 @@ int check(int a){
 	}
 	return flag;	
 }
-/*
-void complete(int p){
-	printf("completed %d\n",p+1);
-}
-*/
+
 void initialise(){
 	avail=malloc(resources*(sizeof(int)) );
 	for(int i=0;i<resources;i++){
@@ -204,6 +206,10 @@ void initialise(){
 		temp[i]=0;
 	}
 	
+		count=malloc(processes*(sizeof(int)));
+		for(int i=0;i<processes;i++){
+			count[i]=0;	
+			}
 	
 
 	
